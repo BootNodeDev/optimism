@@ -34,6 +34,25 @@ abstract contract ERC1155Bridge {
         bytes extraData
     );
 
+    /// @notice Emitted when an ERC1155 bridge to the other network is initiated.
+    /// @param localToken  Address of the token on this domain.
+    /// @param remoteToken Address of the token on the remote domain.
+    /// @param from        Address that initiated bridging action.
+    /// @param to          Address to receive the token.
+    /// @param ids          Type ID of the token deposited.
+    /// @param values       Amount of tokens deposited.
+    /// @param extraData   Extra data for use on the client-side.
+    event ERC1155BridgeBatchInitiated(
+        address indexed localToken,
+        address indexed remoteToken,
+        address indexed from,
+        address to,
+        uint256[] ids,
+        uint256[] values,
+        bytes extraData
+    );
+
+    /// TODO Update natspec
     /// @notice Emitted when an ERC1155 bridge from the other network is finalized.
     /// @param localToken  Address of the token on this domain.
     /// @param remoteToken Address of the token on the remote domain.
@@ -49,6 +68,25 @@ abstract contract ERC1155Bridge {
         address to,
         uint256 id,
         uint256 value,
+        bytes extraData
+    );
+
+    /// TODO Update natspec
+    /// @notice Emitted when an ERC1155 bridge from the other network is finalized.
+    /// @param localToken  Address of the token on this domain.
+    /// @param remoteToken Address of the token on the remote domain.
+    /// @param from        Address that initiated bridging action.
+    /// @param to          Address to receive the token.
+    /// @param ids         Type ID of the token deposited.
+    /// @param values      Amount of tokens deposited.
+    /// @param extraData   Extra data for use on the client-side.
+    event ERC1155BridgeBatchFinalized(
+        address indexed localToken,
+        address indexed remoteToken,
+        address indexed from,
+        address to,
+        uint256[] ids,
+        uint256[] values,
         bytes extraData
     );
 
