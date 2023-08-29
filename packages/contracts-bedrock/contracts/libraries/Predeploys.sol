@@ -17,6 +17,9 @@ library Predeploys {
     /// @notice Address of the L2ERC721Bridge predeploy.
     address internal constant L2_ERC721_BRIDGE = 0x4200000000000000000000000000000000000014;
 
+    /// @notice Address of the L2ERC1155Bridge predeploy.
+    address internal constant L2_ERC1155_BRIDGE = 0x4200000000000000000000000000000000000014;
+
     //// @notice Address of the SequencerFeeWallet predeploy.
     address internal constant SEQUENCER_FEE_WALLET = 0x4200000000000000000000000000000000000011;
 

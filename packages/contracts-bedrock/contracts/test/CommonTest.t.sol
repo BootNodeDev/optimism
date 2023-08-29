@@ -9,6 +9,8 @@ import { L1StandardBridge } from "../L1/L1StandardBridge.sol";
 import { L2StandardBridge } from "../L2/L2StandardBridge.sol";
 import { L1ERC721Bridge } from "../L1/L1ERC721Bridge.sol";
 import { L2ERC721Bridge } from "../L2/L2ERC721Bridge.sol";
+import { L1ERC1155Bridge } from "../L1/L1ERC1155Bridge.sol";
+import { L2ERC1155Bridge } from "../L2/L2ERC1155Bridge.sol";
 import { OptimismMintableERC20Factory } from "../universal/OptimismMintableERC20Factory.sol";
 import { OptimismMintableERC721Factory } from "../universal/OptimismMintableERC721Factory.sol";
 import { OptimismMintableERC20 } from "../universal/OptimismMintableERC20.sol";
@@ -510,6 +512,32 @@ contract ERC721Bridge_Initializer is Messenger_Initializer {
     }
 }
 
+contract ERC1155Bridge_Initializer is Messenger_Initializer {
+    L1ERC1155Bridge L1Bridge;
+    L2ERC1155Bridge L2Bridge;
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        // Deploy the L1ERC1155Bridge.
+        L1Bridge = new L1ERC1155Bridge(address(L1Messenger), Predeploys.L2_ERC1155_BRIDGE);
+
+        // Deploy the implementation for the L2ERC1155Bridge and etch it into the predeploy address.
+        vm.etch(
+            Predeploys.L2_ERC1155_BRIDGE,
+            address(new L2ERC1155Bridge(Predeploys.L2_CROSS_DOMAIN_MESSENGER, address(L1Bridge)))
+                .code
+        );
+
+        // Set up a reference to the L2ERC1155Bridge.
+        L2Bridge = L2ERC1155Bridge(Predeploys.L2_ERC1155_BRIDGE);
+
+        // Label the L1 and L2 bridges.
+        vm.label(address(L1Bridge), "L1ERC1155Bridge");
+        vm.label(address(L2Bridge), "L2ERC1155Bridge");
+    }
+}
+
 contract FeeVault_Initializer is Bridge_Initializer {
     SequencerFeeVault vault = SequencerFeeVault(payable(Predeploys.SEQUENCER_FEE_WALLET));
     address constant recipient = address(1024);
@@ -525,16 +553,9 @@ contract FeeVault_Initializer is Bridge_Initializer {
 }
 
 contract FFIInterface is Test {
-    function getProveWithdrawalTransactionInputs(Types.WithdrawalTransaction memory _tx)
-        external
-        returns (
-            bytes32,
-            bytes32,
-            bytes32,
-            bytes32,
-            bytes[] memory
-        )
-    {
+    function getProveWithdrawalTransactionInputs(
+        Types.WithdrawalTransaction memory _tx
+    ) external returns (bytes32, bytes32, bytes32, bytes32, bytes[] memory) {
         string[] memory cmds = new string[](8);
         cmds[0] = "scripts/differential-testing/differential-testing";
         cmds[1] = "getProveWithdrawalTransactionInputs";
@@ -644,10 +665,9 @@ contract FFIInterface is Test {
         return abi.decode(result, (bytes32));
     }
 
-    function encodeDepositTransaction(Types.UserDepositTransaction calldata txn)
-        external
-        returns (bytes memory)
-    {
+    function encodeDepositTransaction(
+        Types.UserDepositTransaction calldata txn
+    ) external returns (bytes memory) {
         string[] memory cmds = new string[](11);
         cmds[0] = "scripts/differential-testing/differential-testing";
         cmds[1] = "encodeDepositTransaction";
@@ -697,15 +717,9 @@ contract FFIInterface is Test {
         return abi.decode(result, (uint256, uint256));
     }
 
-    function getMerkleTrieFuzzCase(string memory variant)
-        external
-        returns (
-            bytes32,
-            bytes memory,
-            bytes memory,
-            bytes[] memory
-        )
-    {
+    function getMerkleTrieFuzzCase(
+        string memory variant
+    ) external returns (bytes32, bytes memory, bytes memory, bytes[] memory) {
         string[] memory cmds = new string[](5);
         cmds[0] = "./test-case-generator/fuzz";
         cmds[1] = "-m";
