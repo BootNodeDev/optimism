@@ -205,6 +205,90 @@ abstract contract ERC1155Bridge {
         );
     }
 
+    /// @notice Initiates a bridge of an ERC1155 to the caller's account on the other chain. Note
+    ///         that this function can only be called by EOAs. Smart contract wallets should use the
+    ///         `bridgeERC1155To` function after ensuring that the recipient address on the remote
+    ///         chain exists. Also note that the current owner of the tokens on this chain must
+    ///         approve this contract to operate the tokens before it can be bridged.
+    ///         **WARNING**: Do not bridge an ERC1155 that was originally deployed on Optimism. This
+    ///         bridge only supports ERC1155s originally deployed on Ethereum. Users will need to
+    ///         wait for the one-week challenge period to elapse before their Optimism-native
+    ///         ERC1155 can be refunded on L2.
+    /// @param _localToken  Address of the ERC1155 on this domain.
+    /// @param _remoteToken Address of the ERC1155 on the remote domain.
+    /// @param _ids          Type ID of the token to bridge.
+    /// @param _amounts      Amount of tokens to bridge.
+    /// @param _minGasLimit Minimum gas limit for the bridge message on the other domain.
+    /// @param _extraData   Optional data to forward to the other chain. Data supplied here will not
+    ///                     be used to execute any code on the other chain and is only emitted as
+    ///                     extra data for the convenience of off-chain tooling.
+    function bridgeBatchERC1155(
+        address _localToken,
+        address _remoteToken,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) external {
+        // Modifier requiring sender to be EOA. This prevents against a user error that would occur
+        // if the sender is a smart contract wallet that has a different address on the remote chain
+        // (or doesn't have an address on the remote chain at all). The user would fail to receive
+        // the tokens if they use this function because it sends the tokens to the same address as
+        // the caller. This check could be bypassed by a malicious contract via initcode, but it
+        // takes care of the user error we want to avoid.
+        require(!Address.isContract(msg.sender), "ERC1155Bridge: account is not externally owned");
+
+        _initiateBridgeBatchERC1155(
+            _localToken,
+            _remoteToken,
+            msg.sender,
+            msg.sender,
+            _ids,
+            _amounts,
+            _minGasLimit,
+            _extraData
+        );
+    }
+
+    /// @notice Initiates a bridge of an ERC1155 to some recipient's account on the other chain.
+    ///         Note that the current owner of the tokens on this chain must approve this contract
+    ///         to operate the tokens before it can be bridged.
+    ///         **WARNING**: Do not bridge an ERC1155 that was originally deployed on Optimism. This
+    ///         bridge only supports ERC1155s originally deployed on Ethereum. Users will need to
+    ///         wait for the one-week challenge period to elapse before their Optimism-native tokens
+    ///         can be refunded on L2.
+    /// @param _localToken  Address of the ERC1155 on this domain.
+    /// @param _remoteToken Address of the ERC1155 on the remote domain.
+    /// @param _to          Address to receive the token on the other domain.
+    /// @param _ids          Type ID of the token to bridge.
+    /// @param _amounts      Amount of tokens to bridge.
+    /// @param _minGasLimit Minimum gas limit for the bridge message on the other domain.
+    /// @param _extraData   Optional data to forward to the other chain. Data supplied here will not
+    ///                     be used to execute any code on the other chain and is only emitted as
+    ///                     extra data for the convenience of off-chain tooling.
+    function bridgeBatchERC1155To(
+        address _localToken,
+        address _remoteToken,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) external {
+        require(_to != address(0), "ERC1155Bridge: nft recipient cannot be address(0)");
+
+        _initiateBridgeBatchERC1155(
+            _localToken,
+            _remoteToken,
+            msg.sender,
+            _to,
+            _ids,
+            _amounts,
+            _minGasLimit,
+            _extraData
+        );
+    }
+
     /// @notice Internal function for initiating a token bridge to the other domain.
     /// @param _localToken  Address of the ERC1155 on this domain.
     /// @param _remoteToken Address of the ERC1155 on the remote domain.
@@ -223,6 +307,28 @@ abstract contract ERC1155Bridge {
         address _to,
         uint256 _id,
         uint256 _amount,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) internal virtual;
+
+    /// @notice Internal function for initiating a token batch bridge to the other domain.
+    /// @param _localToken  Address of the ERC1155 on this domain.
+    /// @param _remoteToken Address of the ERC1155 on the remote domain.
+    /// @param _from        Address of the sender on this domain.
+    /// @param _to          Address to receive the token on the other domain.
+    /// @param _ids          Type ID of the token to bridge.
+    /// @param _amounts      Amount of tokens to bridge.
+    /// @param _minGasLimit Minimum gas limit for the bridge message on the other domain.
+    /// @param _extraData   Optional data to forward to the other domain. Data supplied here will
+    ///                     not be used to execute any code on the other domain and is only emitted
+    ///                     as extra data for the convenience of off-chain tooling.
+    function _initiateBridgeBatchERC1155(
+        address _localToken,
+        address _remoteToken,
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
         uint32 _minGasLimit,
         bytes calldata _extraData
     ) internal virtual;

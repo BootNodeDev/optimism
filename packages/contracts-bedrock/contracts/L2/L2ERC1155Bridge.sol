@@ -179,17 +179,7 @@ contract L2ERC1155Bridge is ERC1155Bridge, Semver {
         );
     }
 
-    /// @notice Internal function for initiating a token batch bridge to the other domain.
-    /// @param _localToken  Address of the ERC1155 on this domain.
-    /// @param _remoteToken Address of the ERC1155 on the remote domain.
-    /// @param _from        Address of the sender on this domain.
-    /// @param _to          Address to receive the token on the other domain.
-    /// @param _ids         Type ID of the tokens to bridge.
-    /// @param _amounts     Amount of tokens to bridge.
-    /// @param _minGasLimit Minimum gas limit for the bridge message on the other domain.
-    /// @param _extraData   Optional data to forward to the other domain. Data supplied here will
-    ///                     not be used to execute any code on the other domain and is only emitted
-    ///                     as extra data for the convenience of off-chain tooling.
+    /// @inheritdoc ERC1155Bridge
     function _initiateBridgeBatchERC1155(
         address _localToken,
         address _remoteToken,
@@ -199,7 +189,7 @@ contract L2ERC1155Bridge is ERC1155Bridge, Semver {
         uint256[] memory _amounts,
         uint32 _minGasLimit,
         bytes calldata _extraData
-    ) internal {
+    ) internal override {
         require(_remoteToken != address(0), "L2ERC1155Bridge: remote token cannot be address(0)");
         require(
             _amounts.length == _ids.length,

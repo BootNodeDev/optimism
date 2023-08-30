@@ -98,6 +98,10 @@ contract L1ERC1155Bridge_Test is Messenger_Initializer {
         // Mint alice a token.
         localToken.mint(alice, tokenId, initialAmount);
 
+        // Mint a few more for batch tests
+        localToken.mint(alice, 2, initialAmount + 1);
+        localToken.mint(alice, 3, initialAmount + 2);
+
         // Approve the bridge to transfer the token.
         vm.prank(alice);
         localToken.setApprovalForAll(address(bridge), true);
@@ -166,6 +170,75 @@ contract L1ERC1155Bridge_Test is Messenger_Initializer {
             amountBridged
         );
         assertEq(localToken.balanceOf(address(bridge), tokenId), amountBridged);
+    }
+
+    /// @dev Tests that the ERC1155 can be batch bridged successfully.
+    function test_bridgeBatchERC1155_succeeds() public {
+        uint256[] memory ids = new uint256[](3);
+        ids[0] = tokenId;
+        ids[1] = tokenId + 1;
+        ids[2] = tokenId + 2;
+
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = amountBridged;
+        amounts[1] = amountBridged + 1;
+        amounts[2] = amountBridged + 2;
+
+        // Expect a call to the messenger.
+        vm.expectCall(
+            address(L1Messenger),
+            abi.encodeCall(
+                L1Messenger.sendMessage,
+                (
+                    address(otherBridge),
+                    abi.encodeCall(
+                        L2ERC1155Bridge.finalizeBridgeBatchERC1155,
+                        (
+                            address(remoteToken),
+                            address(localToken),
+                            alice,
+                            alice,
+                            ids,
+                            amounts,
+                            hex"5678"
+                        )
+                    ),
+                    1234
+                )
+            )
+        );
+
+        // Expect an event to be emitted.
+        vm.expectEmit(true, true, true, true);
+        emit ERC1155BridgeBatchInitiated(
+            address(localToken),
+            address(remoteToken),
+            alice,
+            alice,
+            ids,
+            amounts,
+            hex"5678"
+        );
+
+        // Bridge the token.
+        vm.prank(alice);
+        bridge.bridgeBatchERC1155(
+            address(localToken),
+            address(remoteToken),
+            ids,
+            amounts,
+            1234,
+            hex"5678"
+        );
+
+        for (uint i = 0; i < ids.length; i++) {
+            // Token is locked in the bridge.
+            assertEq(
+                bridge.deposits(address(localToken), address(remoteToken), ids[i]),
+                amounts[i]
+            );
+            assertEq(localToken.balanceOf(address(bridge), tokenId), amounts[i]);
+        }
     }
 
     /// @dev Tests that the ERC1155 bridge reverts for non externally owned accounts.
@@ -302,6 +375,77 @@ contract L1ERC1155Bridge_Test is Messenger_Initializer {
             amountBridged
         );
         assertEq(localToken.balanceOf(address(bridge), tokenId), amountBridged);
+    }
+
+    /// @dev Tests that the ERC1155 bridge successfully sends a token
+    ///      to a different address than the owner.
+    function test_bridgeBatchERC1155To_succeeds() external {
+        uint256[] memory ids = new uint256[](3);
+        ids[0] = tokenId;
+        ids[1] = tokenId + 1;
+        ids[2] = tokenId + 2;
+
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = amountBridged;
+        amounts[1] = amountBridged + 1;
+        amounts[2] = amountBridged + 2;
+
+        // Expect a call to the messenger.
+        vm.expectCall(
+            address(L1Messenger),
+            abi.encodeCall(
+                L1Messenger.sendMessage,
+                (
+                    address(otherBridge),
+                    abi.encodeCall(
+                        L2ERC1155Bridge.finalizeBridgeBatchERC1155,
+                        (
+                            address(remoteToken),
+                            address(localToken),
+                            alice,
+                            bob,
+                            ids,
+                            amounts,
+                            hex"5678"
+                        )
+                    ),
+                    1234
+                )
+            )
+        );
+
+        // Expect an event to be emitted.
+        vm.expectEmit(true, true, true, true);
+        emit ERC1155BridgeBatchInitiated(
+            address(localToken),
+            address(remoteToken),
+            alice,
+            bob,
+            ids,
+            amounts,
+            hex"5678"
+        );
+
+        // Bridge the token.
+        vm.prank(alice);
+        bridge.bridgeBatchERC1155To(
+            address(localToken),
+            address(remoteToken),
+            bob,
+            ids,
+            amounts,
+            1234,
+            hex"5678"
+        );
+
+        for (uint i = 0; i < ids.length; i++) {
+            // Token is locked in the bridge.
+            assertEq(
+                bridge.deposits(address(localToken), address(remoteToken), ids[i]),
+                amounts[i]
+            );
+            assertEq(localToken.balanceOf(address(bridge), ids[i]), amounts[i]);
+        }
     }
 
     /// @dev Tests that the ERC1155 bridge reverts for non externally owned accounts
