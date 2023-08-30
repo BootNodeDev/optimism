@@ -166,9 +166,7 @@ contract L2ERC1155Bridge is ERC1155Bridge, Semver {
 
         // When a deposit is finalized, we give the amount of the same type ID to the account
         // on L2. Note that mint makes a callback to the _to address which is user provided.
-        for (uint i = 0; i < _ids.length; i++) {
-            IOptimismMintableERC1155(_localToken).mint(_to, _ids[i], _amounts[i]);
-        }
+        IOptimismMintableERC1155(_localToken).mintBatch(_to, _ids, _amounts);
 
         emit ERC1155BridgeBatchFinalized(
             _localToken,
@@ -218,10 +216,7 @@ contract L2ERC1155Bridge is ERC1155Bridge, Semver {
 
         // When a withdrawal is initiated, we burn the amount of the type ID to prevent subsequent
         // L2 usage
-        for (uint i = 0; i < _ids.length; i++) {
-            // slither-disable-next-line reentrancy-events
-            IOptimismMintableERC1155(_localToken).burn(_from, _ids[i], _amounts[i]);
-        }
+        IOptimismMintableERC1155(_localToken).burnBatch(_from, _ids, _amounts);
 
         bytes memory message = abi.encodeWithSelector(
             L1ERC1155Bridge.finalizeBridgeBatchERC1155.selector,

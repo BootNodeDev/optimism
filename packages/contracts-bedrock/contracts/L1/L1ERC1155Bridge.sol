@@ -94,11 +94,11 @@ contract L1ERC1155Bridge is ERC1155Bridge, ERC1155Holder, Semver {
         for (uint i = 0; i < _ids.length; i++) {
             // Reduce amount locked for token type ID for this L1/L2 token pair
             deposits[_localToken][_remoteToken][_ids[i]] -= _amounts[i];
-
-            // When a withdrawal is finalized on L1, the L1 Bridge transfers the NFT to the
-            // withdrawer.
-            IERC1155(_localToken).safeTransferFrom(address(this), _to, _ids[i], _amounts[i], "");
         }
+
+        // When a withdrawal is finalized on L1, the L1 Bridge transfers the NFT to the
+        // withdrawer.
+        IERC1155(_localToken).safeBatchTransferFrom(address(this), _to, _ids, _amounts, "");
 
         emit ERC1155BridgeBatchFinalized(
             _localToken,
@@ -195,8 +195,9 @@ contract L1ERC1155Bridge is ERC1155Bridge, ERC1155Holder, Semver {
         for (uint i = 0; i < _ids.length; i++) {
             // Lock tokens into bridge
             deposits[_localToken][_remoteToken][_ids[i]] += _amounts[i];
-            IERC1155(_localToken).safeTransferFrom(_from, address(this), _ids[i], _amounts[i], "");
         }
+
+        IERC1155(_localToken).safeBatchTransferFrom(_from, address(this), _ids, _amounts, "");
 
         // Send calldata into L2
         MESSENGER.sendMessage(OTHER_BRIDGE, message, _minGasLimit);
