@@ -237,7 +237,7 @@ contract L1ERC1155Bridge_Test is Messenger_Initializer {
                 bridge.deposits(address(localToken), address(remoteToken), ids[i]),
                 amounts[i]
             );
-            assertEq(localToken.balanceOf(address(bridge), tokenId), amounts[i]);
+            assertEq(localToken.balanceOf(address(bridge), ids[i]), amounts[i]);
         }
     }
 
