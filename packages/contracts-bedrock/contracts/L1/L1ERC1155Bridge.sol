@@ -20,10 +20,10 @@ contract L1ERC1155Bridge is ERC1155Bridge, ERC1155Holder, Semver {
     /// @notice Constructs the L1ERC1155Bridge contract.
     /// @param _messenger   Address of the CrossDomainMessenger on this network.
     /// @param _otherBridge Address of the ERC1155 bridge on the other network.
-    constructor(address _messenger, address _otherBridge)
-        Semver(1, 0, 0)
-        ERC1155Bridge(_messenger, _otherBridge)
-    {}
+    constructor(
+        address _messenger,
+        address _otherBridge
+    ) Semver(1, 0, 0) ERC1155Bridge(_messenger, _otherBridge) {}
 
     /// @notice Completes an ERC1155 bridge from the other domain and sends the ERC1155 tokens to
     ///         the recipient on this domain.
@@ -61,6 +61,52 @@ contract L1ERC1155Bridge is ERC1155Bridge, ERC1155Holder, Semver {
             _to,
             _id,
             _amount,
+            _extraData
+        );
+    }
+
+    /// @notice Completes an ERC1155 bridge from the other domain and sends the ERC1155 tokens to
+    ///         the recipient on this domain.
+    /// @param _localToken  Address of the ERC1155 token on this domain.
+    /// @param _remoteToken Address of the ERC1155 token on the other domain.
+    /// @param _from        Address that triggered the bridge on the other domain.
+    /// @param _to          Address to receive the token on this domain.
+    /// @param _ids         Type ID of the token being deposited.
+    /// @param _amounts     Amount of tokens to bridge.
+    /// @param _extraData   Optional data to forward to L2.
+    ///                     Data supplied here will not be used to execute any code on L2 and is
+    ///                     only emitted as extra data for the convenience of off-chain tooling.
+    function finalizeBridgeBatchERC1155(
+        address _localToken,
+        address _remoteToken,
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        bytes calldata _extraData
+    ) external onlyOtherBridge {
+        require(_localToken != address(this), "L1ERC1155Bridge: local token cannot be self");
+        require(
+            _ids.length == _amounts.length,
+            "L1ERC1155Bridge: amounts should be the same length as ids"
+        );
+
+        for (uint i = 0; i < _ids.length; i++) {
+            // Reduce amount locked for token type ID for this L1/L2 token pair
+            deposits[_localToken][_remoteToken][_ids[i]] -= _amounts[i];
+        }
+
+        // When a withdrawal is finalized on L1, the L1 Bridge transfers the NFT to the
+        // withdrawer.
+        IERC1155(_localToken).safeBatchTransferFrom(address(this), _to, _ids, _amounts, "");
+
+        emit ERC1155BridgeBatchFinalized(
+            _localToken,
+            _remoteToken,
+            _from,
+            _to,
+            _ids,
+            _amounts,
             _extraData
         );
     }
@@ -103,6 +149,56 @@ contract L1ERC1155Bridge is ERC1155Bridge, ERC1155Holder, Semver {
             _to,
             _id,
             _amount,
+            _extraData
+        );
+    }
+
+    /// @inheritdoc ERC1155Bridge
+    function _initiateBridgeBatchERC1155(
+        address _localToken,
+        address _remoteToken,
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _amounts,
+        uint32 _minGasLimit,
+        bytes calldata _extraData
+    ) internal override {
+        require(_remoteToken != address(0), "L1ERC1155Bridge: remote token cannot be address(0)");
+        require(
+            _ids.length == _amounts.length,
+            "L1ERC1155Bridge: amounts should be the same length as ids"
+        );
+
+        // Construct calldata for _l2Bridge.finalizeBridgeBatchERC1155(_to, _id, _amount)
+        bytes memory message = abi.encodeWithSelector(
+            L2ERC1155Bridge.finalizeBridgeBatchERC1155.selector,
+            _remoteToken,
+            _localToken,
+            _from,
+            _to,
+            _ids,
+            _amounts,
+            _extraData
+        );
+
+        for (uint i = 0; i < _ids.length; i++) {
+            // Lock tokens into bridge
+            deposits[_localToken][_remoteToken][_ids[i]] += _amounts[i];
+        }
+
+        IERC1155(_localToken).safeBatchTransferFrom(_from, address(this), _ids, _amounts, "");
+
+        // Send calldata into L2
+        MESSENGER.sendMessage(OTHER_BRIDGE, message, _minGasLimit);
+
+        emit ERC1155BridgeBatchInitiated(
+            _localToken,
+            _remoteToken,
+            _from,
+            _to,
+            _ids,
+            _amounts,
             _extraData
         );
     }
